@@ -26,12 +26,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.awt.*
 import java.awt.image.BufferedImage
-import java.io.File
-import java.io.FileOutputStream
+import java.io.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import javax.imageio.ImageIO
 import kotlin.math.min
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 
 ///////////////////////////////
 // Service
@@ -219,7 +221,7 @@ fun nextImage() {
 
 private fun getRandomWikiImageUrl(screenWith: Int, screenHeight: Int): Pair<String, String>? {
     val urlWiki = "https://en.wikipedia.org/wiki/Special:RandomInCategory/Featured_pictures"
-//    val urlWiki = "https://en.wikipedia.org/wiki/File:Jan_Vermeer_-_The_Art_of_Painting_-_Google_Art_Project.jpg"
+//    val urlWiki = "https://en.wikipedia.org/wiki/File:Ermina_Zaenah,_three-quarter_portrait_(c_1960)_-_restored_(without_name).jpg"
     val client = OkHttpClient()
     val request = Request.Builder().url(urlWiki).build()
     try {
@@ -368,15 +370,15 @@ private fun scaleImageToFitScreen(
 private fun cropImageToScreen(image: BufferedImage, screenWidth: Int, screenHeight: Int): BufferedImage {
     //if (image.width > image.height) {
     //if more than 30% should be cropped, than do nothing
-    return if ((image.width / screenWidth.toFloat()) < 1.4 && (image.height / screenHeight.toFloat()) > 1.5)
-        image
-    else {
+//    return if ((image.width / screenWidth.toFloat()) < 1.4 && (image.height / screenHeight.toFloat()) > 1.5)
+//        image
+//    else {
         val x = if (image.width > screenWidth) image.width / 2 - screenWidth / 2 else 0
         val y = if (image.height > screenHeight) image.height / 2 - screenHeight / 2 else 0
         val width = if (image.width < screenWidth) image.width else screenWidth
         val height = if (image.height < screenHeight) image.height else screenHeight
-        cropImage(image, x, y, width, height)
-    }
+        return cropImage(image, x, y, width, height)
+//    }
     //} else return image
 }
 
@@ -431,9 +433,9 @@ private fun extendImageToFillScreen(image: BufferedImage, screenWidth: Int, scre
                 count++
             }
         }
-        resR /= resR
-        resG /= resG
-        resB /= resB
+        resR /= count
+        resG /= count
+        resB /= count
         //
         graphics.color = java.awt.Color(resR.toInt(), resG.toInt(), resB.toInt())
         graphics.fillRect(0, 0, screenWidth, screenHeight)
@@ -540,10 +542,18 @@ fun toStop() {
 ////////////////////////////////////
 // View model
 
+@Serializable
 object Settings {
     val hours = mutableStateOf(0)
     val minutes = mutableStateOf(1)
     val drawText = mutableStateOf(false)
+}
+
+@Serializable
+data class Settings2(
+    val hours:Int = 0,
+    val minutes:Int = 4,
+    val drawText:Boolean = true){
 }
 
 object States {
@@ -559,6 +569,8 @@ object States {
 
 fun main() = application {
 
+    val exitFunction = { toExit(::exitApplication) }
+    //readSettings()
     RunTimer()
 
     Tray(
@@ -574,7 +586,7 @@ fun main() = application {
             )
             Item(
                 "Exit",
-                onClick = { exitApplication() }
+                onClick = { exitFunction() }
             )
         },
         onAction = { States.isOpen.value = true }
@@ -586,9 +598,39 @@ fun main() = application {
             title = "Eva Kotlin",
             state = rememberWindowState(width = 500.dp, height = 300.dp)
         ) {
-            app(::exitApplication)
+            app(exitFunction)
         }
     }
+}
+
+fun toExit(exitFunction: () -> Unit) {
+//    saveSettings()
+    exitFunction()
+}
+
+fun saveSettings(){
+    val homeDir = System.getProperty("user.home")
+    val pathToFile = "$homeDir/evaKotlin.ini"
+    val format = Json { encodeDefaults = true }
+    val jsonText = format.encodeToString(Settings)
+    File(pathToFile).writeText(jsonText)
+}
+
+fun readSettings(){
+    val homeDir = System.getProperty("user.home")
+    val pathToFile = "$homeDir/evaKotlin.ini"
+    val jsonText = File(pathToFile).readText()
+    Settings.hours.value = Json.decodeFromString<Settings>(jsonText).hours.value
+    //gson.toJson(person)
+
+//    val File = File(pathToFile)
+//    if(File.exists()) {
+//        val bos = FileInputStream(pathToFile)
+//        val oos = ObjectInputStream(bos)
+//        val Settings2 = (oos.readObject() as Settings)
+//        Settings.hours.value = Settings2.hours.value
+//        bos.close()
+//    }
 }
 
 object TrayIconDefault : Painter() {
