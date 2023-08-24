@@ -22,6 +22,7 @@ import com.sun.jna.platform.win32.WinDef
 import com.sun.jna.win32.W32APIFunctionMapper
 import com.sun.jna.win32.W32APITypeMapper
 import kotlinx.coroutines.*
+import kotlinx.serialization.SerializationException
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.awt.*
@@ -31,7 +32,6 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import javax.imageio.ImageIO
 import kotlin.math.min
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
@@ -50,9 +50,9 @@ private fun log(text: String) {
 // Design
 
 @Composable
-@Preview
 fun app(exitFunction: () -> Unit) {
 
+    println("app")
     Column {
 
         // State
@@ -61,17 +61,29 @@ fun app(exitFunction: () -> Unit) {
         // Draw text
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text = "Draw text: ")
-            Checkbox(
-                checked = Settings.drawText.value,
-                onCheckedChange = { Settings.drawText.value = it },
-                enabled = true
-            )
+            CheckBoxDrawText()
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = "Crop vertical: ")
+            CheckBoxCropVertical()
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = "Run open: ")
+            CheckBoxRunOpen()
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = "Start on run: ")
+            CheckBoxStartOnRun()
         }
 
         // Timer hours
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = {
-                editClock(Settings.hours, -1, 0, 99)
+                if (Settings.hours > 0)
+                    Settings.hours -= 1
             }) {
                 Text("-")
             }
@@ -81,14 +93,14 @@ fun app(exitFunction: () -> Unit) {
                 onValueChange = { newText ->
                     newText.substring(0, min(2, newText.length)).apply {
                         if (this.matches("[0-9]*".toRegex()))
-                            Settings.hours.value = this.toInt()
+                            Settings.hours = this.toInt()
                     }
                 },
                 label = "Hours"
             )
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = {
-                editClock(Settings.hours, 1, 0, 99)
+                Settings.hours += 1
             }) {
                 Text("+")
             }
@@ -98,7 +110,9 @@ fun app(exitFunction: () -> Unit) {
         // Timer minutes
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = {
-                editClock(Settings.minutes, -1, 0, 59)
+                //editClock(Settings.minutes, -1, 0, 59)
+                if (Settings.minutes > 0)
+                    Settings.minutes -= 1
             }) {
                 Text("-")
             }
@@ -108,14 +122,15 @@ fun app(exitFunction: () -> Unit) {
                 onValueChange = { newText ->
                     newText.substring(0, min(2, newText.length)).apply {
                         if (this.matches("[0-9]*".toRegex()))
-                            Settings.minutes.value = this.toInt()
+                            Settings.minutes = this.toInt()
                     }
                 },
                 label = "Minutes"
             )
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = {
-                editClock(Settings.minutes, 1, 0, 59)
+                if (Settings.minutes < 59)
+                    Settings.minutes += 1
             }) {
                 Text("+")
             }
@@ -156,8 +171,45 @@ fun app(exitFunction: () -> Unit) {
 }
 
 @Composable
+fun CheckBoxDrawText() {
+    Checkbox(
+        checked = Settings.drawText,
+        onCheckedChange = { Settings.drawText = it },
+        enabled = true
+    )
+}
+
+@Composable
+fun CheckBoxCropVertical() {
+    Checkbox(
+        checked = Settings.cropVertical,
+        onCheckedChange = { Settings.cropVertical = it },
+        enabled = true
+    )
+}
+
+@Composable
+fun CheckBoxRunOpen() {
+    Checkbox(
+        checked = Settings.runOpen,
+        onCheckedChange = { Settings.runOpen = it },
+        enabled = true
+    )
+}
+
+@Composable
+fun CheckBoxStartOnRun() {
+    Checkbox(
+        checked = Settings.startOnRun,
+        onCheckedChange = { Settings.startOnRun = it },
+        enabled = true
+    )
+}
+
+
+@Composable
 fun ButtonNext() {
-    Button(enabled = !States.loading.value,
+    Button(enabled = !States.loading,
         onClick = {
             nextImage()
         }) {
@@ -167,26 +219,21 @@ fun ButtonNext() {
 
 @Composable
 fun FieldClock(
-    text: State<Int>,
+    text: Int,
     onValueChange: (String) -> Unit,
     label: String
 ) {
-    OutlinedTextField(value = text.value.toString(), onValueChange = onValueChange, label = { Text(label) })
-}
-
-fun editClock(clock: MutableState<Int>, step: Int, min: Int, max: Int) {
-    if (clock.value + step in min..max)
-        clock.value += step
+    OutlinedTextField(value = text.toString(), onValueChange = onValueChange, label = { Text(label) })
 }
 
 @Composable
 fun TimerText() {
-    Text(text = "Time left: ${States.timeLeft.value}")
+    Text(text = "Time left: ${States.timeLeft}")
 }
 
 @Composable
 fun TitleText() {
-    Text(text = "Title image: ${States.title.value}")
+    Text(text = "Title image: ${States.title}")
 }
 
 
@@ -195,7 +242,7 @@ fun TitleText() {
 
 fun nextImage() {
     CoroutineScope(Dispatchers.Default).launch {
-        States.loading.value = true
+        States.loading = true
         try {
             val (screenWidth, screenHeight) = Toolkit.getDefaultToolkit().screenSize.let { it.width to it.height }
             val res = getRandomWikiImageUrl(screenWidth, screenHeight)
@@ -214,7 +261,7 @@ fun nextImage() {
         } catch (e: Exception) {
             log(e.toString())
         } finally {
-            States.loading.value = false
+            States.loading = false
         }
     }
 }
@@ -290,6 +337,7 @@ private fun getRandomWikiImageUrl(screenWith: Int, screenHeight: Int): Pair<Stri
         title = title.replace("<[^<>]+>".toRegex(), "") // delete tags
         title = title.replace("&[^;]+;".toRegex(), "") // delete &-sequence
         title = title.replace("\\.$".toRegex(), "") // delete last dot
+        title = title.replace("\r\n".toRegex(), "") // delete new line
 
         return Pair(urlImage, title)
 
@@ -325,8 +373,9 @@ private fun editImage(imagePath: String, title: String, screenWidth: Int, screen
     var image: BufferedImage = ImageIO.read(file)
 
     //val willCrop = !((image.width / screenWidth.toFloat()) < 1.4 && (image.height / screenHeight.toFloat()) > 1.5)
-    val willCrop =
+    val isHorizontal =
         ((image.width.toFloat() / image.height) > 1) && (image.width >= screenWidth) && (image.height >= screenHeight)
+    val willCrop = Settings.cropVertical || isHorizontal
     if (willCrop) {
         image = scaleImageToFitScreen(image, screenWidth, screenHeight, true)
         image = cropImageToScreen(image, screenWidth, screenHeight)
@@ -334,12 +383,12 @@ private fun editImage(imagePath: String, title: String, screenWidth: Int, screen
         image = scaleImageToFitScreen(image, screenWidth, screenHeight, false)
     }
     image = extendImageToFillScreen(image, screenWidth, screenHeight)
-    if (Settings.drawText.value)
+    if (Settings.drawText)
         image = addTextToImage(image, title)
 
     val outputFile = File(imagePath)
     ImageIO.write(image, "png", outputFile)
-    States.title.value = title
+    States.title = title
     log(title)
 }
 
@@ -368,18 +417,11 @@ private fun scaleImageToFitScreen(
 }
 
 private fun cropImageToScreen(image: BufferedImage, screenWidth: Int, screenHeight: Int): BufferedImage {
-    //if (image.width > image.height) {
-    //if more than 30% should be cropped, than do nothing
-//    return if ((image.width / screenWidth.toFloat()) < 1.4 && (image.height / screenHeight.toFloat()) > 1.5)
-//        image
-//    else {
-        val x = if (image.width > screenWidth) image.width / 2 - screenWidth / 2 else 0
-        val y = if (image.height > screenHeight) image.height / 2 - screenHeight / 2 else 0
-        val width = if (image.width < screenWidth) image.width else screenWidth
-        val height = if (image.height < screenHeight) image.height else screenHeight
-        return cropImage(image, x, y, width, height)
-//    }
-    //} else return image
+    val x = if (image.width > screenWidth) image.width / 2 - screenWidth / 2 else 0
+    val y = if (image.height > screenHeight) image.height / 2 - screenHeight / 2 else 0
+    val width = if (image.width < screenWidth) image.width else screenWidth
+    val height = if (image.height < screenHeight) image.height else screenHeight
+    return cropImage(image, x, y, width, height)
 }
 
 private fun cropImage(image: BufferedImage, x: Int, y: Int, width: Int, height: Int): BufferedImage {
@@ -502,66 +544,62 @@ fun setWallpaper(imagePath: String) {
         WinDef.UINT_PTR(0x0014), WinDef.UINT_PTR(0), imagePath, WinDef.UINT_PTR(0x01 or 0x02)
     )
 }
+
 ////////////////////////////////////////////////////////
 // Timer
 
 @Composable
 fun RunTimer() {
-    LaunchedEffect(key1 = States.timerPause.value) {
+    LaunchedEffect(key1 = States.timerPause) {
         tick()
     }
 }
 
 suspend fun tick() {
-    while (States.timeLeft.value > 0) {
-        if (States.timerPause.value)
+    while (States.timeLeft > 0) {
+        if (States.timerPause)
             break
         delay(1000)
-        if (States.timeLeft.value > 0)
-            States.timeLeft.value--
-        if (States.timeLeft.value == 0) {
-            States.timeLeft.value = Settings.hours.value * 60 * 60 + Settings.minutes.value * 60
+        if (States.timeLeft > 0)
+            States.timeLeft--
+        if (States.timeLeft == 0) {
+            States.timeLeft = Settings.hours * 60 * 60 + Settings.minutes * 60
             nextImage()
         }
     }
 }
 
 fun toStart() {
-    States.timerPause.value = false
+    States.timerPause = false
 }
 
 fun toPause() {
-    States.timerPause.value = !States.timerPause.value
+    States.timerPause = !States.timerPause
 }
 
 fun toStop() {
-    States.timerPause.value = true
-    States.timeLeft.value = Settings.hours.value * 60 * 60 + Settings.minutes.value * 60
+    States.timerPause = true
+    States.timeLeft = Settings.hours * 60 * 60 + Settings.minutes * 60
 }
 
 ////////////////////////////////////
 // View model
 
-@Serializable
 object Settings {
-    val hours = mutableStateOf(0)
-    val minutes = mutableStateOf(1)
-    val drawText = mutableStateOf(false)
-}
-
-@Serializable
-data class Settings2(
-    val hours:Int = 0,
-    val minutes:Int = 4,
-    val drawText:Boolean = true){
+    var hours: Int by mutableStateOf(0)
+    var minutes: Int by mutableStateOf(1)
+    var drawText: Boolean by mutableStateOf(false)
+    var runOpen: Boolean by mutableStateOf(false)
+    var cropVertical: Boolean by mutableStateOf(false)
+    var startOnRun: Boolean by mutableStateOf(false)
 }
 
 object States {
-    val isOpen = mutableStateOf(true)
-    val timeLeft = mutableStateOf(600)
-    val timerPause = mutableStateOf(true)
-    val loading = mutableStateOf(false)
-    val title = mutableStateOf("")
+    var isOpen: Boolean by mutableStateOf(true)
+    var timeLeft: Int by mutableStateOf(600)
+    var timerPause: Boolean by mutableStateOf(true)
+    var loading: Boolean by mutableStateOf(false)
+    var title: String by mutableStateOf("")
 }
 
 ////////////////////////////////////
@@ -569,16 +607,23 @@ object States {
 
 fun main() = application {
 
-    val exitFunction = { toExit(::exitApplication) }
-    //readSettings()
+    // Execute only on start
+    remember {
+        readSettings()
+        States.isOpen = Settings.runOpen
+        toStop()
+        States.timerPause = !Settings.startOnRun
+    }
+
+    val exitFunction = remember { { toExit(::exitApplication) } }
     RunTimer()
 
     Tray(
-        icon = if (States.loading.value) TrayIconLoading else TrayIconDefault,
+        icon = if (States.loading) TrayIconLoading else TrayIconDefault,
         menu = {
             Item(
                 "Open",
-                onClick = { States.isOpen.value = true }
+                onClick = { States.isOpen = true }
             )
             Item(
                 "Next",
@@ -589,14 +634,14 @@ fun main() = application {
                 onClick = { exitFunction() }
             )
         },
-        onAction = { States.isOpen.value = true }
+        onAction = { States.isOpen = true }
     )
 
-    if (States.isOpen.value) {
+    if (States.isOpen) {
         Window(
-            onCloseRequest = { States.isOpen.value = false },
+            onCloseRequest = { States.isOpen = false },
             title = "Eva Kotlin",
-            state = rememberWindowState(width = 500.dp, height = 300.dp)
+            state = rememberWindowState(width = 500.dp, height = 500.dp)
         ) {
             app(exitFunction)
         }
@@ -604,44 +649,55 @@ fun main() = application {
 }
 
 fun toExit(exitFunction: () -> Unit) {
-//    saveSettings()
+    saveSettings()
     exitFunction()
 }
 
-fun saveSettings(){
+fun saveSettings() {
     val homeDir = System.getProperty("user.home")
     val pathToFile = "$homeDir/evaKotlin.ini"
-    val format = Json { encodeDefaults = true }
-    val jsonText = format.encodeToString(Settings)
+    val mapSettings: Map<String, String> = mapOf(
+        "hours" to Settings.hours.toString(),
+        "minutes" to Settings.minutes.toString(),
+        "drawText" to Settings.drawText.toString(),
+        "runOpen" to Settings.runOpen.toString(),
+        "cropVertical" to Settings.cropVertical.toString(),
+        "startOnRun" to Settings.startOnRun.toString()
+    )
+    val jsonText = Json.encodeToString(mapSettings)
     File(pathToFile).writeText(jsonText)
 }
 
-fun readSettings(){
+fun readSettings() {
+    println("read")
     val homeDir = System.getProperty("user.home")
     val pathToFile = "$homeDir/evaKotlin.ini"
-    val jsonText = File(pathToFile).readText()
-    Settings.hours.value = Json.decodeFromString<Settings>(jsonText).hours.value
-    //gson.toJson(person)
-
-//    val File = File(pathToFile)
-//    if(File.exists()) {
-//        val bos = FileInputStream(pathToFile)
-//        val oos = ObjectInputStream(bos)
-//        val Settings2 = (oos.readObject() as Settings)
-//        Settings.hours.value = Settings2.hours.value
-//        bos.close()
-//    }
+    val file = File(pathToFile)
+    if (file.exists()) {
+        val jsonText = file.readText()
+        val mapSettings = try {
+            Json.decodeFromString<Map<String, String>>(jsonText)
+        } catch (e: SerializationException) {
+            mapOf()
+        }
+        Settings.hours = mapSettings["hours"]?.let { (it as? String)?.toInt() } ?: 0
+        Settings.minutes = mapSettings["minutes"]?.let { (it as? String)?.toInt() } ?: 15
+        Settings.drawText = mapSettings["drawText"]?.let { (it as? String)?.toBoolean() } ?: false
+        Settings.runOpen = mapSettings["runOpen"]?.let { (it as? String)?.toBoolean() } ?: true
+        Settings.cropVertical = mapSettings["cropVertical"]?.let { (it as? String)?.toBoolean() } ?: false
+        Settings.startOnRun = mapSettings["startOnRun"]?.let { (it as? String)?.toBoolean() } ?: false
+    }
 }
 
 object TrayIconDefault : Painter() {
-    override val intrinsicSize = Size(256f, 256f)
+    override val intrinsicSize = Size(16f, 16f)
     override fun DrawScope.onDraw() {
         drawOval(Color(0xFF00A500))
     }
 }
 
 object TrayIconLoading : Painter() {
-    override val intrinsicSize = Size(256f, 256f)
+    override val intrinsicSize = Size(16f, 16f)
     override fun DrawScope.onDraw() {
         drawOval(Color(0xFFFFA500))
     }
