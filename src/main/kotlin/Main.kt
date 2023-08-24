@@ -42,17 +42,16 @@ private fun log(text: String) {
     println(text)
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     val dateTimeString = LocalDateTime.now().format(formatter)
-    val homeDir = System.getProperty("user.home")
-    File("$homeDir\\evaKotlinLogs.txt").appendText("\n$dateTimeString $text")
+    File("${States.path}/evaKotlinLogs.txt").appendText("\n$dateTimeString $text")
 }
 
 ///////////////////////////////
 // Design
 
 @Composable
+@Preview
 fun app(exitFunction: () -> Unit) {
 
-    println("app")
     Column {
 
         // State
@@ -249,9 +248,9 @@ fun nextImage() {
             if (res != null) {
                 val (url, title) = (res.first to res.second)
                 //val curDir = System.getProperty("user.dir")
-                val homeDir = System.getProperty("user.home")
+                //val homeDir = System.getProperty("user.home")
                 //val pathToFile = "$homeDir/pic.${url.substringAfterLast(".")}"
-                val pathToFile = "$homeDir/pic.png"
+                val pathToFile = "${States.path}/pic.png"
                 log(url)
                 if (downloadImage(url, pathToFile)) {
                     editImage(pathToFile, title, screenWidth, screenHeight)
@@ -436,7 +435,6 @@ private fun extendImageToFillScreen(image: BufferedImage, screenWidth: Int, scre
         val posY = screenHeight / 2 - originalHeight / 2
         val bufferedImage = BufferedImage(screenWidth, screenHeight, BufferedImage.TYPE_INT_RGB)
         val graphics = bufferedImage.createGraphics()
-        //graphics.background = java.awt.Color.RED
         // Average color
         var resR = 0L
         var resG = 0L
@@ -600,6 +598,13 @@ object States {
     var timerPause: Boolean by mutableStateOf(true)
     var loading: Boolean by mutableStateOf(false)
     var title: String by mutableStateOf("")
+    val path = System.getProperty("user.home") + "/evaKotlin"
+
+    init {
+        val file = File(path)
+        if (!file.exists())
+            file.mkdir()
+    }
 }
 
 ////////////////////////////////////
@@ -631,7 +636,7 @@ fun main() = application {
             )
             Item(
                 "Exit",
-                onClick = { exitFunction() }
+                onClick = {  }
             )
         },
         onAction = { States.isOpen = true }
@@ -654,8 +659,8 @@ fun toExit(exitFunction: () -> Unit) {
 }
 
 fun saveSettings() {
-    val homeDir = System.getProperty("user.home")
-    val pathToFile = "$homeDir/evaKotlin.ini"
+    //val homeDir = System.getProperty("user.home")
+    val pathToFile = "${States.path}/evaKotlin.ini"
     val mapSettings: Map<String, String> = mapOf(
         "hours" to Settings.hours.toString(),
         "minutes" to Settings.minutes.toString(),
@@ -670,8 +675,8 @@ fun saveSettings() {
 
 fun readSettings() {
     println("read")
-    val homeDir = System.getProperty("user.home")
-    val pathToFile = "$homeDir/evaKotlin.ini"
+    //val homeDir = System.getProperty("user.home")
+    val pathToFile = "${States.path}/evaKotlin.ini"
     val file = File(pathToFile)
     if (file.exists()) {
         val jsonText = file.readText()
