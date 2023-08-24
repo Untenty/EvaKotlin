@@ -52,27 +52,22 @@ private fun log(text: String) {
 @Preview
 fun app(exitFunction: () -> Unit) {
 
-    Column {
+    Column(modifier = Modifier.padding(start =10.dp)) {
 
-        // State
         TimerText()
 
-        // Draw text
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text = "Draw text: ")
             CheckBoxDrawText()
         }
-
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text = "Crop vertical: ")
             CheckBoxCropVertical()
         }
-
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text = "Run open: ")
             CheckBoxRunOpen()
         }
-
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text = "Start on run: ")
             CheckBoxStartOnRun()
@@ -80,88 +75,53 @@ fun app(exitFunction: () -> Unit) {
 
         // Timer hours
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = {
-                if (Settings.hours > 0)
-                    Settings.hours -= 1
-            }) {
-                Text("-")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = { if (Settings.hours > 0) Settings.hours -= 1 },
+                content = { Text("-") })
             FieldClock(
                 text = Settings.hours,
                 onValueChange = { newText ->
                     newText.substring(0, min(2, newText.length)).apply {
-                        if (this.matches("[0-9]*".toRegex()))
-                            Settings.hours = this.toInt()
+                        if (this.matches("[0-9]*".toRegex())) Settings.hours = this.toInt()
                     }
                 },
                 label = "Hours"
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                Settings.hours += 1
-            }) {
-                Text("+")
-            }
-
+            Button(onClick = { Settings.hours += 1 },
+                content = { Text("+") })
         }
 
         // Timer minutes
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = {
-                //editClock(Settings.minutes, -1, 0, 59)
-                if (Settings.minutes > 0)
-                    Settings.minutes -= 1
-            }) {
-                Text("-")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = { if (Settings.minutes > 0) Settings.minutes -= 1 },
+                content = { Text("-") })
             FieldClock(
                 text = Settings.minutes,
                 onValueChange = { newText ->
                     newText.substring(0, min(2, newText.length)).apply {
-                        if (this.matches("[0-9]*".toRegex()))
-                            Settings.minutes = this.toInt()
+                        if (this.matches("[0-9]*".toRegex())) Settings.minutes = this.toInt()
                     }
                 },
                 label = "Minutes"
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                if (Settings.minutes < 59)
-                    Settings.minutes += 1
-            }) {
-                Text("+")
-            }
+            Button(onClick = { if (Settings.minutes < 59) Settings.minutes += 1 },
+                content = { Text("+") })
         }
 
         // Commands
         Row {
-            Button(onClick = {
-                toStart()
-            }) {
-                Text("Start")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                toPause()
-            }) {
-                Text("Pause")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                toStop()
-            }) {
-                Text("Stop")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = { toStart() },
+                modifier = Modifier.padding(8.dp),
+                content = { Text("Start") })
+            Button(onClick = { toPause() },
+                modifier = Modifier.padding(8.dp),
+                content = { Text("Pause") })
+            Button(onClick = { toStop() },
+                modifier = Modifier.padding(8.dp),
+                content = { Text("Stop") })
             ButtonNext()
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                exitFunction()
-            }) {
-                Text("Exit")
-            }
+            Button(onClick = { exitFunction() },
+                modifier = Modifier.padding(8.dp),
+                content = { Text("Exit") })
         }
 
         TitleText()
@@ -174,7 +134,8 @@ fun CheckBoxDrawText() {
     Checkbox(
         checked = Settings.drawText,
         onCheckedChange = { Settings.drawText = it },
-        enabled = true
+        enabled = true,
+        modifier = Modifier.height(30.dp)
     )
 }
 
@@ -183,7 +144,8 @@ fun CheckBoxCropVertical() {
     Checkbox(
         checked = Settings.cropVertical,
         onCheckedChange = { Settings.cropVertical = it },
-        enabled = true
+        enabled = true,
+        modifier = Modifier.height(30.dp)
     )
 }
 
@@ -192,7 +154,8 @@ fun CheckBoxRunOpen() {
     Checkbox(
         checked = Settings.runOpen,
         onCheckedChange = { Settings.runOpen = it },
-        enabled = true
+        enabled = true,
+        modifier = Modifier.height(30.dp)
     )
 }
 
@@ -201,28 +164,33 @@ fun CheckBoxStartOnRun() {
     Checkbox(
         checked = Settings.startOnRun,
         onCheckedChange = { Settings.startOnRun = it },
-        enabled = true
+        enabled = true,
+        modifier = Modifier.height(30.dp)
     )
 }
 
 
 @Composable
 fun ButtonNext() {
-    Button(enabled = !States.loading,
-        onClick = {
+    Button(
+        enabled = !States.loading, onClick = {
             nextImage()
-        }) {
+        }, modifier = Modifier.padding(8.dp)
+    ) {
         Text("Next")
     }
 }
 
 @Composable
 fun FieldClock(
-    text: Int,
-    onValueChange: (String) -> Unit,
-    label: String
+    text: Int, onValueChange: (String) -> Unit, label: String
 ) {
-    OutlinedTextField(value = text.toString(), onValueChange = onValueChange, label = { Text(label) })
+    OutlinedTextField(
+        value = text.toString(),
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = Modifier.padding(8.dp).width(100.dp)
+    )
 }
 
 @Composable
@@ -232,7 +200,7 @@ fun TimerText() {
 
 @Composable
 fun TitleText() {
-    Text(text = "Title image: ${States.title}")
+    Text(text = "Title image: ${States.title}", color = Color(255, 45, 0))
 }
 
 
@@ -247,9 +215,6 @@ fun nextImage() {
             val res = getRandomWikiImageUrl(screenWidth, screenHeight)
             if (res != null) {
                 val (url, title) = (res.first to res.second)
-                //val curDir = System.getProperty("user.dir")
-                //val homeDir = System.getProperty("user.home")
-                //val pathToFile = "$homeDir/pic.${url.substringAfterLast(".")}"
                 val pathToFile = "${States.path}/pic.png"
                 log(url)
                 if (downloadImage(url, pathToFile)) {
@@ -267,27 +232,23 @@ fun nextImage() {
 
 private fun getRandomWikiImageUrl(screenWith: Int, screenHeight: Int): Pair<String, String>? {
     val urlWiki = "https://en.wikipedia.org/wiki/Special:RandomInCategory/Featured_pictures"
-//    val urlWiki = "https://en.wikipedia.org/wiki/File:Ermina_Zaenah,_three-quarter_portrait_(c_1960)_-_restored_(without_name).jpg"
+//    val urlWiki = "https://en.wikipedia.org/wiki/File:George_Bellows_-_Men_of_the_Docks_-_1912_-_The_National_Gallery.jpg"
     val client = OkHttpClient()
     val request = Request.Builder().url(urlWiki).build()
     try {
         val response = client.newCall(request).execute()
-        if (!response.isSuccessful)
-            return null
+        if (!response.isSuccessful) return null
         val newURL = response.request.url.toString()
         log(newURL)
-        if (newURL.endsWith("webm"))
-            return getRandomWikiImageUrl(screenWith, screenHeight)
+        if (newURL.endsWith("webm") || newURL.endsWith("ogv")) return getRandomWikiImageUrl(screenWith, screenHeight)
         val text = response.body!!.string()
         var urlImage: String? = null
 
         val regex0 = "<a href=\"([^\"]+)\"[^>]*>([0-9,]+) × ([0-9,]+) pixels</a>".toRegex()
         val matchResults = regex0.findAll(text)
         if (matchResults.any()) {
-            //val ls1t: List<Triple<String,Long,Long>> = List<>()
             val lst: MutableList<Triple<String, Long, Long>> = mutableListOf()
             for (matchResult in matchResults) {
-                //val (urlImage, width, height) = matchResult.groups.get()
                 val url = matchResult.groups[1]!!.value
                 val width = matchResult.groups[2]!!.value.replace(",", "")
                 val height = matchResult.groups[3]!!.value.replace(",", "")
@@ -295,11 +256,9 @@ private fun getRandomWikiImageUrl(screenWith: Int, screenHeight: Int): Pair<Stri
             }
             val sortedValues = lst.sortedByDescending { it.second }
             for (triple in sortedValues) {
-                if (triple.second >= screenWith && triple.third >= screenHeight)
-                    urlImage = triple.first
+                if (triple.second >= screenWith && triple.third >= screenHeight) urlImage = triple.first
                 else {
-                    if (urlImage == null)
-                        urlImage = triple.first
+                    if (urlImage == null) urlImage = triple.first
                     break
                 }
             }
@@ -308,15 +267,12 @@ private fun getRandomWikiImageUrl(screenWith: Int, screenHeight: Int): Pair<Stri
         if (urlImage == null) {
             val regex1 = "class=\"fullMedia\".*href=\"([^\"]+)\"".toRegex()
             val matchResult1 = regex1.find(text)
-            if (matchResult1 != null)
-                urlImage = matchResult1.groups[1]!!.value
+            if (matchResult1 != null) urlImage = matchResult1.groups[1]!!.value
         }
 
-        if (urlImage == null)
-            return null
+        if (urlImage == null) return null
 
-        if (!urlImage.startsWith("http"))
-            urlImage = "https:$urlImage"
+        if (!urlImage.startsWith("http")) urlImage = "https:$urlImage"
 
         var regex2 = "(?s)Russian: </b></span>(.+?)</div>".toRegex()
         var matchResult2 = regex2.find(text)
@@ -336,7 +292,7 @@ private fun getRandomWikiImageUrl(screenWith: Int, screenHeight: Int): Pair<Stri
         title = title.replace("<[^<>]+>".toRegex(), "") // delete tags
         title = title.replace("&[^;]+;".toRegex(), "") // delete &-sequence
         title = title.replace("\\.$".toRegex(), "") // delete last dot
-        title = title.replace("\r\n".toRegex(), "") // delete new line
+        title = title.replace("[\n\r]".toRegex(), "") // delete new line
 
         return Pair(urlImage, title)
 
@@ -371,10 +327,9 @@ private fun editImage(imagePath: String, title: String, screenWidth: Int, screen
     val file = File(imagePath)
     var image: BufferedImage = ImageIO.read(file)
 
-    //val willCrop = !((image.width / screenWidth.toFloat()) < 1.4 && (image.height / screenHeight.toFloat()) > 1.5)
-    val isHorizontal =
-        ((image.width.toFloat() / image.height) > 1) && (image.width >= screenWidth) && (image.height >= screenHeight)
-    val willCrop = Settings.cropVertical || isHorizontal
+    val isHorizontal = (image.width.toFloat() / image.height) > 0.9
+    val willCrop =
+        Settings.cropVertical || (isHorizontal && (image.width >= screenWidth) && (image.height >= screenHeight))
     if (willCrop) {
         image = scaleImageToFitScreen(image, screenWidth, screenHeight, true)
         image = cropImageToScreen(image, screenWidth, screenHeight)
@@ -382,8 +337,7 @@ private fun editImage(imagePath: String, title: String, screenWidth: Int, screen
         image = scaleImageToFitScreen(image, screenWidth, screenHeight, false)
     }
     image = extendImageToFillScreen(image, screenWidth, screenHeight)
-    if (Settings.drawText)
-        image = addTextToImage(image, title)
+    if (Settings.drawText) image = addTextToImage(image, title)
 
     val outputFile = File(imagePath)
     ImageIO.write(image, "png", outputFile)
@@ -392,18 +346,14 @@ private fun editImage(imagePath: String, title: String, screenWidth: Int, screen
 }
 
 private fun scaleImageToFitScreen(
-    image: BufferedImage,
-    screenWidth: Int,
-    screenHeight: Int,
-    willCrop: Boolean
+    image: BufferedImage, screenWidth: Int, screenHeight: Int, willCrop: Boolean
 ): BufferedImage {
     val screenAspectRatio = screenWidth / screenHeight.toFloat()
     val originalWidth = image.width.toFloat()
     val originalHeight = image.height.toFloat()
     val imageAspectRatio = originalWidth / originalHeight
     val scaleFactor =
-        if ((willCrop && screenAspectRatio < imageAspectRatio) || (!willCrop && imageAspectRatio < screenAspectRatio))
-            screenHeight / originalHeight
+        if ((willCrop && screenAspectRatio < imageAspectRatio) || (!willCrop && imageAspectRatio < screenAspectRatio)) screenHeight / originalHeight
         else screenWidth / originalWidth
     val newWidth = (originalWidth * scaleFactor).toInt()
     val newHeight = (originalHeight * scaleFactor).toInt()
@@ -555,11 +505,9 @@ fun RunTimer() {
 
 suspend fun tick() {
     while (States.timeLeft > 0) {
-        if (States.timerPause)
-            break
+        if (States.timerPause) break
         delay(1000)
-        if (States.timeLeft > 0)
-            States.timeLeft--
+        if (States.timeLeft > 0) States.timeLeft--
         if (States.timeLeft == 0) {
             States.timeLeft = Settings.hours * 60 * 60 + Settings.minutes * 60
             nextImage()
@@ -602,8 +550,7 @@ object States {
 
     init {
         val file = File(path)
-        if (!file.exists())
-            file.mkdir()
+        if (!file.exists()) file.mkdir()
     }
 }
 
@@ -612,8 +559,7 @@ object States {
 
 fun main() = application {
 
-    // Execute only on start
-    remember {
+    remember { // Execute only on start
         readSettings()
         States.isOpen = Settings.runOpen
         toStop()
@@ -623,24 +569,11 @@ fun main() = application {
     val exitFunction = remember { { toExit(::exitApplication) } }
     RunTimer()
 
-    Tray(
-        icon = if (States.loading) TrayIconLoading else TrayIconDefault,
-        menu = {
-            Item(
-                "Open",
-                onClick = { States.isOpen = true }
-            )
-            Item(
-                "Next",
-                onClick = { nextImage() }
-            )
-            Item(
-                "Exit",
-                onClick = {  }
-            )
-        },
-        onAction = { States.isOpen = true }
-    )
+    Tray(icon = if (States.loading) TrayIconLoading else TrayIconDefault, menu = {
+        Item("Open", onClick = { States.isOpen = true })
+        Item("Next", onClick = { nextImage() })
+        Item("Exit", onClick = { exitFunction() })
+    }, onAction = { States.isOpen = true })
 
     if (States.isOpen) {
         Window(
@@ -659,7 +592,6 @@ fun toExit(exitFunction: () -> Unit) {
 }
 
 fun saveSettings() {
-    //val homeDir = System.getProperty("user.home")
     val pathToFile = "${States.path}/evaKotlin.ini"
     val mapSettings: Map<String, String> = mapOf(
         "hours" to Settings.hours.toString(),
@@ -674,8 +606,6 @@ fun saveSettings() {
 }
 
 fun readSettings() {
-    println("read")
-    //val homeDir = System.getProperty("user.home")
     val pathToFile = "${States.path}/evaKotlin.ini"
     val file = File(pathToFile)
     if (file.exists()) {
