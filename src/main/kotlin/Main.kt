@@ -52,7 +52,7 @@ private fun log(text: String) {
 @Preview
 fun app(exitFunction: () -> Unit) {
 
-    Column(modifier = Modifier.padding(start =10.dp)) {
+    Column(modifier = Modifier.padding(start = 10.dp)) {
 
         TimerText()
 
@@ -232,18 +232,20 @@ fun nextImage() {
 
 private fun getRandomWikiImageUrl(screenWith: Int, screenHeight: Int): Pair<String, String>? {
     val urlWiki = "https://en.wikipedia.org/wiki/Special:RandomInCategory/Featured_pictures"
-//    val urlWiki = "https://en.wikipedia.org/wiki/File:George_Bellows_-_Men_of_the_Docks_-_1912_-_The_National_Gallery.jpg"
     val client = OkHttpClient()
     val request = Request.Builder().url(urlWiki).build()
     try {
         val response = client.newCall(request).execute()
-        if (!response.isSuccessful) return null
+        if (!response.isSuccessful)
+            return null
         val newURL = response.request.url.toString()
         log(newURL)
-        if (newURL.endsWith("webm") || newURL.endsWith("ogv")) return getRandomWikiImageUrl(screenWith, screenHeight)
+        if (newURL.endsWith("webm") || newURL.endsWith("ogv"))
+            return getRandomWikiImageUrl(screenWith, screenHeight)
         val text = response.body!!.string()
         var urlImage: String? = null
 
+        // Choose pic with size more than screen
         val regex0 = "<a href=\"([^\"]+)\"[^>]*>([0-9,]+) × ([0-9,]+) pixels</a>".toRegex()
         val matchResults = regex0.findAll(text)
         if (matchResults.any()) {
@@ -264,16 +266,22 @@ private fun getRandomWikiImageUrl(screenWith: Int, screenHeight: Int): Pair<Stri
             }
         }
 
+        // If didn't find size if pic than take URL from tag "fullMedia"
         if (urlImage == null) {
             val regex1 = "class=\"fullMedia\".*href=\"([^\"]+)\"".toRegex()
             val matchResult1 = regex1.find(text)
-            if (matchResult1 != null) urlImage = matchResult1.groups[1]!!.value
+            if (matchResult1 != null)
+                urlImage = matchResult1.groups[1]!!.value
         }
 
-        if (urlImage == null) return null
+        if (urlImage == null)
+            return null
 
-        if (!urlImage.startsWith("http")) urlImage = "https:$urlImage"
+        // Add https
+        if (!urlImage.startsWith("http"))
+            urlImage = "https:$urlImage"
 
+        // Take title
         var regex2 = "(?s)Russian: </b></span>(.+?)</div>".toRegex()
         var matchResult2 = regex2.find(text)
         if (matchResult2 == null) {
@@ -289,6 +297,7 @@ private fun getRandomWikiImageUrl(screenWith: Int, screenHeight: Int): Pair<Stri
             matchResult2 = regex2.find(text)
         }
         var title = matchResult2?.groups?.get(1)?.value ?: ""
+        // Clear title
         title = title.replace("<[^<>]+>".toRegex(), "") // delete tags
         title = title.replace("&[^;]+;".toRegex(), "") // delete &-sequence
         title = title.replace("\\.$".toRegex(), "") // delete last dot
@@ -386,47 +395,39 @@ private fun extendImageToFillScreen(image: BufferedImage, screenWidth: Int, scre
         val bufferedImage = BufferedImage(screenWidth, screenHeight, BufferedImage.TYPE_INT_RGB)
         val graphics = bufferedImage.createGraphics()
         // Average color
-        var resR = 0L
-        var resG = 0L
-        var resB = 0L
+        var (resR, resG, resB) = Triple(0L, 0L, 0L)
         var color: Int
         var count = 0L
+        val lambda: (Int)->Unit = { iColor ->
+            resR += iColor and 0xff0000 shr 16
+            resG += iColor and 0xff00 shr 8
+            resB += iColor and 0xff
+        }
         if (originalHeight < screenHeight) {
             for (x in 0 until originalWidth) {
                 color = image.getRGB(x, 0)
-                resR += color and 0xff0000 shr 16
-                resG += color and 0xff00 shr 8
-                resB += color and 0xff
-                count++
+                lambda(color)
             }
             for (x in 0 until originalWidth) {
                 color = image.getRGB(x, originalHeight - 1)
-                resR += color and 0xff0000 shr 16
-                resG += color and 0xff00 shr 8
-                resB += color and 0xff
-                count++
+                lambda(color)
             }
+            count += originalWidth*2
         }
         if (originalWidth < screenWidth) {
             for (y in 0 until originalHeight) {
                 color = image.getRGB(0, y)
-                resR += color and 0xff0000 shr 16
-                resG += color and 0xff00 shr 8
-                resB += color and 0xff
-                count++
+                lambda(color)
             }
             for (y in 0 until originalHeight) {
                 color = image.getRGB(originalWidth - 1, y)
-                resR += color and 0xff0000 shr 16
-                resG += color and 0xff00 shr 8
-                resB += color and 0xff
-                count++
+                lambda(color)
             }
+            count += originalHeight*2
         }
         resR /= count
         resG /= count
         resB /= count
-        //
         graphics.color = java.awt.Color(resR.toInt(), resG.toInt(), resB.toInt())
         graphics.fillRect(0, 0, screenWidth, screenHeight)
         graphics.drawImage(image, posX, posY, null)
@@ -554,6 +555,39 @@ object States {
     }
 }
 
+fun saveSettings() {
+    val pathToFile = "${States.path}/evaKotlin.ini"
+    val mapSettings: Map<String, String> = mapOf(
+        "hours" to Settings.hours.toString(),
+        "minutes" to Settings.minutes.toString(),
+        "drawText" to Settings.drawText.toString(),
+        "runOpen" to Settings.runOpen.toString(),
+        "cropVertical" to Settings.cropVertical.toString(),
+        "startOnRun" to Settings.startOnRun.toString()
+    )
+    val jsonText = Json.encodeToString(mapSettings)
+    File(pathToFile).writeText(jsonText)
+}
+
+fun readSettings() {
+    val pathToFile = "${States.path}/evaKotlin.ini"
+    val file = File(pathToFile)
+    if (file.exists()) {
+        val jsonText = file.readText()
+        val mapSettings = try {
+            Json.decodeFromString<Map<String, String>>(jsonText)
+        } catch (e: SerializationException) {
+            mapOf()
+        }
+        Settings.hours = mapSettings["hours"]?.let { (it as? String)?.toInt() } ?: 0
+        Settings.minutes = mapSettings["minutes"]?.let { (it as? String)?.toInt() } ?: 15
+        Settings.drawText = mapSettings["drawText"]?.let { (it as? String)?.toBoolean() } ?: false
+        Settings.runOpen = mapSettings["runOpen"]?.let { (it as? String)?.toBoolean() } ?: true
+        Settings.cropVertical = mapSettings["cropVertical"]?.let { (it as? String)?.toBoolean() } ?: false
+        Settings.startOnRun = mapSettings["startOnRun"]?.let { (it as? String)?.toBoolean() } ?: false
+    }
+}
+
 ////////////////////////////////////
 // Main
 
@@ -589,39 +623,6 @@ fun main() = application {
 fun toExit(exitFunction: () -> Unit) {
     saveSettings()
     exitFunction()
-}
-
-fun saveSettings() {
-    val pathToFile = "${States.path}/evaKotlin.ini"
-    val mapSettings: Map<String, String> = mapOf(
-        "hours" to Settings.hours.toString(),
-        "minutes" to Settings.minutes.toString(),
-        "drawText" to Settings.drawText.toString(),
-        "runOpen" to Settings.runOpen.toString(),
-        "cropVertical" to Settings.cropVertical.toString(),
-        "startOnRun" to Settings.startOnRun.toString()
-    )
-    val jsonText = Json.encodeToString(mapSettings)
-    File(pathToFile).writeText(jsonText)
-}
-
-fun readSettings() {
-    val pathToFile = "${States.path}/evaKotlin.ini"
-    val file = File(pathToFile)
-    if (file.exists()) {
-        val jsonText = file.readText()
-        val mapSettings = try {
-            Json.decodeFromString<Map<String, String>>(jsonText)
-        } catch (e: SerializationException) {
-            mapOf()
-        }
-        Settings.hours = mapSettings["hours"]?.let { (it as? String)?.toInt() } ?: 0
-        Settings.minutes = mapSettings["minutes"]?.let { (it as? String)?.toInt() } ?: 15
-        Settings.drawText = mapSettings["drawText"]?.let { (it as? String)?.toBoolean() } ?: false
-        Settings.runOpen = mapSettings["runOpen"]?.let { (it as? String)?.toBoolean() } ?: true
-        Settings.cropVertical = mapSettings["cropVertical"]?.let { (it as? String)?.toBoolean() } ?: false
-        Settings.startOnRun = mapSettings["startOnRun"]?.let { (it as? String)?.toBoolean() } ?: false
-    }
 }
 
 object TrayIconDefault : Painter() {

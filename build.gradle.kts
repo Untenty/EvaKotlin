@@ -25,7 +25,6 @@ dependencies {
     implementation("net.java.dev.jna:jna:5.13.0")
     implementation("net.java.dev.jna:jna-platform:5.13.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
-//    implementation("androidx.compose.ui:ui-tooling-preview:1.4.2")
 }
 
 compose.desktop {
